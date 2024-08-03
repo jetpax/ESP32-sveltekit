@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## WIP
 
+### Added
+
+- added berry-lang as a scripting solution. This can be enabled / disabled as a feature. Also provides a script editor on the frontend.
+
 ### Changed
 
 - Updated platform espressif32 to 6.8.1

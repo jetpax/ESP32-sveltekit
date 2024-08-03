@@ -17,6 +17,11 @@
 #include <LightStateService.h>
 #include <PsychicHttpServer.h>
 
+extern "C"
+{
+#include "berry.h"
+}
+
 #define SERIAL_BAUD_RATE 115200
 
 PsychicHttpServer server;
@@ -49,6 +54,18 @@ void setup()
 
 void loop()
 {
+    bvm *vm = be_vm_new(); // Construct a VM
+    // printf("Berry VM loaded, RAM used=%u", be_gc_memcount(*vm));
+    printf("-- Minimal test --\n");
+    be_loadstring(vm, "print('Hello Berry')"); // Compile test code
+    be_pcall(vm, 0);                           // Call function
+    be_loadstring(vm, "a=10");
+    be_pcall(vm, 0);
+    be_loadstring(vm, "print(a)");
+    be_pcall(vm, 0);
+    printf("------------------\n\n");
+    be_vm_delete(vm);
+
     // Delete Arduino loop task, as it is not needed in this example
     vTaskDelete(NULL);
 }
