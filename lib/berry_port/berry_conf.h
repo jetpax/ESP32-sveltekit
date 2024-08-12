@@ -15,7 +15,7 @@
  * Default: 0
  **/
 #ifndef BE_DEBUG
-#define BE_DEBUG 0
+#define BE_DEBUG 1
 #endif
 
 /* Macro: BE_LONGLONG_INT
@@ -57,7 +57,7 @@
  * 1: keep the source file name
  * Default: 1
  **/
-#define BE_DEBUG_SOURCE_FILE 0
+#define BE_DEBUG_SOURCE_FILE 1
 
 /* Macro: BE_DEBUG_RUNTIME_INFO
  * Set runtime error debugging information.
@@ -134,7 +134,7 @@
  * will not be used.
  * Default: 0
  **/
-#define BE_USE_FILE_SYSTEM 0
+#define BE_USE_FILE_SYSTEM 1
 
 /* Macro: BE_USE_SCRIPT_COMPILER
  * Enable compiler when BE_USE_SCRIPT_COMPILER is not 0, otherwise

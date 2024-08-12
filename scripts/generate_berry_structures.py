@@ -1,4 +1,5 @@
 # Copyright (C) 2023  Stephan Hadinger & Theo Arends
+# Copyright (C) 2024  theelims
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,17 +22,36 @@ import glob
 import subprocess
 from os.path import join
 
-# generate all precompiled Berry structures from multiple modules
+
 CURRENT_DIR = os.getcwd()
 BERRY_GEN_DIR = join(env.subst("$PROJECT_DIR"), "lib","berry")
-os.chdir(BERRY_GEN_DIR)
-fileList = glob.glob(join(BERRY_GEN_DIR, "generate", "*"))
-for filePath in fileList:
-    try:
-        os.remove(filePath)
-        print("Deleting file : ", filePath)
-    except:
-        print("Error while deleting file : ", filePath)
-cmd = (env["PYTHONEXE"],join("tools","coc","coc"),"-o","generate","src",join("..","berry_port"),"-c",join("..","berry_port","berry_conf.h"))
-returncode = subprocess.call(cmd, shell=False)
-os.chdir(CURRENT_DIR)
+buildFlags = env.ParseFlags(env["BUILD_FLAGS"])
+
+def feature_is_set(flag):
+    for define in buildFlags.get("CPPDEFINES"):
+        # print(define)
+        if (isinstance(define, list) and define[0] == flag and define[1] == "1"):
+            return True
+    return False
+
+# generate all precompiled Berry structures from multiple modules
+def build_berry_structures():
+    os.chdir(BERRY_GEN_DIR)
+    fileList = glob.glob(join(BERRY_GEN_DIR, "generate", "*"))
+    for filePath in fileList:
+        try:
+            os.remove(filePath)
+            print("Deleting file : ", filePath)
+        except:
+            print("Error while deleting file : ", filePath)
+    cmd = (env["PYTHONEXE"],join("tools","coc","coc"),"-o","generate","src",join("..","berry_port"),join("..","berry_mapping","src"),"-c",join("..","berry_port","berry_conf.h"))
+    returncode = subprocess.call(cmd, shell=False)
+    os.chdir(CURRENT_DIR)
+    return
+
+if feature_is_set("FT_BERRY"):
+    build_berry_structures()
+
+
+
+
