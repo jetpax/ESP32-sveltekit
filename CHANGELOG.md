@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- added berry-lang as a scripting solution. This can be enabled / disabled as a feature. Also provides a script editor on the frontend.
+
+### Changed
+
+- Updated platform espressif32 to 6.8.1
+
+### Added
+
 - Added compatibility with ESP32-C6
 - Added Arduino Log Colors
 - Possibility to add a loop callback to ESP32-Sveltekit to leverage its loop threat. Meant to include custom services so no separate task is needed for them.

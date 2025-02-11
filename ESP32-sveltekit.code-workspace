@@ -58,7 +58,9 @@
       "cinttypes": "cpp",
       "typeinfo": "cpp",
       "unordered_set": "cpp",
-      "iomanip": "cpp"
+      "iomanip": "cpp",
+      "esp_chip_info.h": "c",
+      "be_vm.h": "c"
     }
   }
 }
