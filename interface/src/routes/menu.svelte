@@ -50,6 +50,12 @@
 			feature: true,
 			
 		},
+    {
+      title: 'File Editor',
+      icon: Settings, // Replace with a suitable icon
+      href: '/file-editor',
+      feature: true,
+    },
 		{
 			title: 'Connections',
 			icon: Remote,
