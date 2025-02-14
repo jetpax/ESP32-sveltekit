@@ -51,7 +51,7 @@
 			
 		},
     {
-      title: 'File Editor',
+      title: 'Berry Editor',
       icon: Settings, // Replace with a suitable icon
       href: '/file-editor',
       feature: true,
