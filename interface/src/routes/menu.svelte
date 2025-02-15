@@ -56,6 +56,11 @@
       href: '/file-editor',
       feature: true,
     },
+    { 
+      title: "REPL", 
+      icon: Settings, 
+      href: "/repl", 
+      feature: true }, 
 		{
 			title: 'Connections',
 			icon: Remote,

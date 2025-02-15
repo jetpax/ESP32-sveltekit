@@ -1,5 +1,5 @@
 <script>
-  import FileEditor from './FileEditor.svelte'; // Import the File Editor component
+  import FileEditor from './FileEditor.svelte'; 
 </script>
 
 <FileEditor />
