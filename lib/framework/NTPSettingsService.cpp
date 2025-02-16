@@ -76,7 +76,10 @@ void NTPSettingsService::configureNTP()
     {
         setenv("TZ", _state.tzFormat.c_str(), 1);
         tzset();
-        sntp_stop();
+        // Lock the TCP/IP core
+        tcpip_callback([](void *arg) {
+          sntp_stop();  
+        }, nullptr);
     }
 }
 

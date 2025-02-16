@@ -21,6 +21,8 @@
 
 #include <time.h>
 #include <lwip/apps/sntp.h>
+#include "esp_netif.h"
+#include "lwip/tcpip.h"
 
 #ifndef FACTORY_NTP_ENABLED
 #define FACTORY_NTP_ENABLED true
