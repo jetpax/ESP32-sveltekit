@@ -12,7 +12,9 @@
  **/
 
 #include <DownloadFirmwareService.h>
-
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include "esp_crt_bundle.h"
 extern const uint8_t rootca_crt_bundle_start[] asm("_binary_src_certs_x509_crt_bundle_bin_start");
 
 static EventSocket *_socket = nullptr;
@@ -54,54 +56,60 @@ void update_finished()
 void updateTask(void *param)
 {
     WiFiClientSecure client;
-    client.setCACertBundle(rootca_crt_bundle_start);
     client.setTimeout(10);
 
+    // Attach the certificate bundle for secure HTTPS connections
+    esp_crt_bundle_attach(NULL); // Directly attach the certificate bundle without needing getESPClient()
+
+    // Configure HTTP Update settings
     httpUpdate.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
     httpUpdate.rebootOnUpdate(true);
 
     String url = *((String *)param);
     String output;
-    // httpUpdate.onStart(update_started);
-    // httpUpdate.onProgress(update_progress);
-    // httpUpdate.onEnd(update_finished);
-
-    t_httpUpdate_return ret = httpUpdate.update(client, url.c_str());
     JsonObject jsonObject;
 
+    // Perform the OTA update
+    t_httpUpdate_return ret = httpUpdate.update(client, url.c_str());
+
+    // Handle the result of the update
     switch (ret)
     {
     case HTTP_UPDATE_FAILED:
-
         doc["status"] = "error";
         doc["error"] = httpUpdate.getLastErrorString().c_str();
         jsonObject = doc.as<JsonObject>();
-        _socket->emitEvent(EVENT_DOWNLOAD_OTA, jsonObject);
-
+        if (_socket)
+        {
+            _socket->emitEvent(EVENT_DOWNLOAD_OTA, jsonObject);
+        }
         ESP_LOGE("Download OTA", "HTTP Update failed with error (%d): %s", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-#ifdef SERIAL_INFO
-        Serial.printf("HTTP Update failed with error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-#endif
         break;
-    case HTTP_UPDATE_NO_UPDATES:
 
+    case HTTP_UPDATE_NO_UPDATES:
         doc["status"] = "error";
         doc["error"] = "Update failed, has same firmware version";
         jsonObject = doc.as<JsonObject>();
-        _socket->emitEvent(EVENT_DOWNLOAD_OTA, jsonObject);
-
+        if (_socket)
+        {
+            _socket->emitEvent(EVENT_DOWNLOAD_OTA, jsonObject);
+        }
         ESP_LOGE("Download OTA", "HTTP Update failed, has same firmware version");
-#ifdef SERIAL_INFO
-        Serial.println("HTTP Update failed, has same firmware version");
-#endif
         break;
+
     case HTTP_UPDATE_OK:
+        doc["status"] = "success";
+        doc["message"] = "Update successful - Restarting";
+        jsonObject = doc.as<JsonObject>();
+        if (_socket)
+        {
+            _socket->emitEvent(EVENT_DOWNLOAD_OTA, jsonObject);
+        }
         ESP_LOGI("Download OTA", "HTTP Update successful - Restarting");
-#ifdef SERIAL_INFO
-        Serial.println("HTTP Update successful - Restarting");
-#endif
         break;
     }
+
+    // Clean up the task to avoid memory leaks
     vTaskDelete(NULL);
 }
 

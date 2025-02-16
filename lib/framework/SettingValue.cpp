@@ -13,6 +13,7 @@
  **/
 
 #include <SettingValue.h>
+#include <esp_mac.h>
 
 namespace SettingValue
 {
@@ -50,7 +51,10 @@ namespace SettingValue
     String getUniqueId()
     {
         uint8_t mac[6];
-        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        esp_err_t err = ESP_OK;
+
+        err = esp_read_mac(mac, ESP_MAC_WIFI_STA);  
+
         char macStr[13] = {0};
         sprintf(macStr, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
         return String(macStr);

@@ -36,7 +36,7 @@
 #include "esp_heap_caps.h"
 #include "esp_chip_info.h"
 #include "soc/efuse_reg.h"
-#include "spiram.h"
+#include "esp_psram.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 
