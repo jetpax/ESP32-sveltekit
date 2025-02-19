@@ -34,20 +34,32 @@
 
 class LightState
 {
-public:
+    public:
     bool ledOn;
+    float red;
+    float green;
+    float blue;
 
     static void read(LightState &settings, JsonObject &root)
     {
         root["led_on"] = settings.ledOn;
+        root["red"] = settings.red;
+        root["green"] = settings.green;
+        root["blue"] = settings.blue;
     }
 
     static StateUpdateResult update(JsonObject &root, LightState &lightState)
     {
         boolean newState = root["led_on"] | DEFAULT_LED_STATE;
-        if (lightState.ledOn != newState)
+        float red = root["red"] | 0.;
+        float green = root["green"] | 0.;
+        float blue = root["blue"] | 0.;
+        if (lightState.ledOn != newState || lightState.red != red || lightState.green != green || lightState.blue != blue)
         {
             lightState.ledOn = newState;
+            lightState.red = red;
+            lightState.green = green;
+            lightState.blue = blue;
             return StateUpdateResult::CHANGED;
         }
         return StateUpdateResult::UNCHANGED;
@@ -97,6 +109,7 @@ private:
     WebSocketServer<LightState> _webSocketServer;
     PsychicMqttClient *_mqttClient;
     LightMqttSettingsService *_lightMqttSettingsService;
+    FeaturesService *_featuresService;
 
     void registerConfig();
     void onConfigUpdated();

@@ -40,10 +40,20 @@ LightStateService::LightStateService(PsychicHttpServer *server,
                                                                                                             sveltekit->getSecurityManager(),
                                                                                                             AuthenticationPredicates::IS_AUTHENTICATED),
                                                                                            _mqttClient(sveltekit->getMqttClient()),
-                                                                                           _lightMqttSettingsService(lightMqttSettingsService)
+                                                                                           _lightMqttSettingsService(lightMqttSettingsService),
+                                                                                           _featuresService(sveltekit->getFeatureService())
+
 {
+#ifdef RGB_BUILTIN
+    Serial.printf("Add RGBLED");
+
+    _featuresService->addFeature("rgb", true);
+#else
+    Serial.printf("NO RGBLED!!!");
     // configure led to be output
     pinMode(LED_BUILTIN, OUTPUT);
+    _featuresService->addFeature("rgb", false);
+#endif
 
     // configure MQTT callback
     _mqttClient->onConnect(std::bind(&LightStateService::registerConfig, this));
@@ -63,13 +73,20 @@ void LightStateService::begin()
 {
     _httpEndpoint.begin();
     _eventEndpoint.begin();
+    _webSocketServer.begin();  // Ensure WebSocketServer is initialized
     _state.ledOn = DEFAULT_LED_STATE;
     onConfigUpdated();
 }
 
 void LightStateService::onConfigUpdated()
 {
+#ifdef RGB_BUILTIN
+    Serial.printf("[onConfigUpdated] Updating RGBLED state to: %s\n", _state.ledOn ? "BLUE" : "BLACK");
+    if (_state.ledOn) rgbLedWrite(RGB_BUILTIN,_state.red*255.,_state.green*255.,_state.blue*255.);
+    else rgbLedWrite(RGB_BUILTIN,0,0,0);
+#else
     digitalWrite(LED_BUILTIN, _state.ledOn ? 1 : 0);
+#endif
 }
 
 void LightStateService::registerConfig()

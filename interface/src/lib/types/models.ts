@@ -58,6 +58,9 @@ export type ApSettings = {
 
 export type LightState = {
 	led_on: boolean;
+  red: number;
+	green: number;
+	blue: number;
 };
 
 export type BrokerSettings = {
