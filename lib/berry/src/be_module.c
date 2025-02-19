@@ -30,6 +30,8 @@
     #define DLL_SUFFIX ".so"
   #elif defined(_WIN32)
     #define DLL_SUFFIX ".dll"
+  #elif defined(ESP_PLATFORM)
+    #define DLL_SUFFIX ""
   #else
     #define DLL_SUFFIX ""
     #warning module: unsuppord OS

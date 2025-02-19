@@ -19,6 +19,7 @@
 #include <ESPFS.h>
 #include <FS.h>
 #include "esp_log.h"
+#include "BerryReplService.h"
 
 extern "C"
 {
@@ -34,6 +35,8 @@ extern "C"
 PsychicHttpServer server;
 
 ESP32SvelteKit esp32sveltekit(&server, 120);
+
+BerryReplService berryReplService(&esp32sveltekit);
 
 LightMqttSettingsService lightMqttSettingsService = LightMqttSettingsService(&server,
                                                                              &esp32sveltekit);
@@ -101,6 +104,8 @@ void setup()
     lightStateService.begin();
     // start the light service
     lightMqttSettingsService.begin();
+
+    berryReplService.begin();
 
     writeFile(ESPFS, "/test.be", "print('Hello, World!')\r\na=20\r\nprint(a) \r\n");
 }

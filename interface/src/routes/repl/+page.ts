@@ -2,6 +2,6 @@ import type { PageLoad } from './$types';
 
 export const load = (async ({ fetch }) => {
 	return {
-		title: 'REPL'
+		title: 'Berry REPL'
 	};
 }) satisfies PageLoad;
