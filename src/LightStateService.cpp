@@ -13,6 +13,7 @@
  **/
 
 #include <LightStateService.h>
+static const char *TAG = "LightStateService";
 
 LightStateService::LightStateService(PsychicHttpServer *server,
                                      ESP32SvelteKit *sveltekit,
@@ -44,16 +45,6 @@ LightStateService::LightStateService(PsychicHttpServer *server,
                                                                                            _featuresService(sveltekit->getFeatureService())
 
 {
-#ifdef RGB_BUILTIN
-    Serial.printf("Add RGBLED");
-
-    _featuresService->addFeature("rgb", true);
-#else
-    Serial.printf("NO RGBLED!!!");
-    // configure led to be output
-    pinMode(LED_BUILTIN, OUTPUT);
-    _featuresService->addFeature("rgb", false);
-#endif
 
     // configure MQTT callback
     _mqttClient->onConnect(std::bind(&LightStateService::registerConfig, this));
@@ -75,6 +66,17 @@ void LightStateService::begin()
     _eventEndpoint.begin();
     _webSocketServer.begin();  // Ensure WebSocketServer is initialized
     _state.ledOn = DEFAULT_LED_STATE;
+
+    #ifdef RGB_BUILTIN
+      ESP_LOGI(TAG, "Add RGBLED on GPIO%d", PIN_RGB_LED);
+      // configure led to be output
+      pinMode(PIN_RGB_LED, OUTPUT);
+      _featuresService->addFeature("rgb", true);
+#else
+    ESP_LOGI(TAG, "NO RGBLED");
+    _featuresService->addFeature("rgb", false);
+#endif
+
     onConfigUpdated();
 }
 

@@ -24,7 +24,7 @@
 #include <WebSocketServer.h>
 #include <ESP32SvelteKit.h>
 
-#define DEFAULT_LED_STATE false
+#define DEFAULT_LED_STATE true
 #define OFF_STATE "OFF"
 #define ON_STATE "ON"
 
