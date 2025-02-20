@@ -32,10 +32,12 @@ public:
                     PsychicHttpServer *server,
                     const char *webSocketPath,
                     SecurityManager *securityManager,
+                    PsychicWebSocketHandler &socket,  // Inject EventSocket’s WebSocket handler
                     AuthenticationPredicate authenticationPredicate = AuthenticationPredicates::IS_ADMIN) : _stateReader(stateReader),
                                                                                                             _stateUpdater(stateUpdater),
                                                                                                             _statefulService(statefulService),
                                                                                                             _server(server),
+                                                                                                            _webSocket(socket), 
                                                                                                             _webSocketPath(webSocketPath),
                                                                                                             _authenticationPredicate(authenticationPredicate),
                                                                                                             _securityManager(securityManager)
@@ -48,25 +50,11 @@ public:
 
     void begin()
     {
-        _webSocket.setFilter(_securityManager->filterRequest(_authenticationPredicate));
-        _webSocket.onOpen(std::bind(&WebSocketServer::onWSOpen,
-                                    this,
-                                    std::placeholders::_1));
-        _webSocket.onClose(std::bind(&WebSocketServer::onWSClose,
-                                     this,
-                                     std::placeholders::_1));
-        _webSocket.onFrame(std::bind(&WebSocketServer::onWSFrame,
-                                     this,
-                                     std::placeholders::_1,
-                                     std::placeholders::_2));
-        _server->on(_webSocketPath.c_str(), &_webSocket);
-
-        ESP_LOGV("WebSocketServer", "Registered WebSocket handler: %s", _webSocketPath.c_str());
+        ESP_LOGI("WebSocketServer", "Using existing WebSocket handler from EventSocket.");
     }
 
     void onWSOpen(PsychicWebSocketClient *client)
     {
-
         // when a client connects, we transmit it's id and the current payload
         transmitId(client);
         transmitData(client, WEB_SOCKET_ORIGIN);
@@ -111,7 +99,7 @@ private:
     AuthenticationPredicate _authenticationPredicate;
     SecurityManager *_securityManager;
     PsychicHttpServer *_server;
-    PsychicWebSocketHandler _webSocket;
+    PsychicWebSocketHandler &_webSocket;
     String _webSocketPath;
 
     void transmitId(PsychicWebSocketClient *client)
@@ -138,7 +126,7 @@ private:
     {
         JsonDocument jsonDocument;
         JsonObject root = jsonDocument.to<JsonObject>();
-        String buffer;
+        std::string buffer; // WA serializeJson bug in Arduino-ESP32 3.1.2
 
         _statefulService->read(root, _stateReader);
 

@@ -44,7 +44,8 @@ public:
   // if onlyToSameOrigin == true, the message will be sent to the originId only, otherwise it will be broadcasted to all clients except the originId
 
   unsigned int getConnectedClients();
-
+  PsychicWebSocketHandler &getWebSocketHandler() { return _socket; }
+  
 private:
   PsychicHttpServer *_server;
   PsychicWebSocketHandler _socket;
