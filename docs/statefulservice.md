@@ -344,7 +344,7 @@ The latter function allowing a selection of the recipient. If `onlyToSameOrigin 
 A callback or lambda function can be registered to receive an ArduinoJSON object and the originId of the client sending the data:
 
 ```cpp
-_socket.onEvent("CostumEvent",[&](JsonObject &root, int originId)
+_socket.onEvent("CustomEvent",[&](JsonObject &root, int originId)
 {
   bool ledState = root["led_on"];
 });
