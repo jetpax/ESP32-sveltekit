@@ -22,6 +22,11 @@
 class JsonUtils
 {
 public:
+    static void readIP(JsonObject &root, const String &key, IPAddress &ip, const char *def)
+    {
+        readIP(root, key, ip, String(def));
+    }
+
     static void readIP(JsonObject &root, const String &key, IPAddress &ip, const String &def)
     {
         IPAddress defaultIp = {};
