@@ -2,7 +2,11 @@
 module.exports = {
 	content: ['./src/**/*.{html,js,svelte,ts}'],
 	theme: {
-		extend: {}
+		extend: {
+      fontWeight: {
+        bold: '600', 
+      },
+    },
 	},
 	plugins: [require('daisyui')],
 	daisyui: {
