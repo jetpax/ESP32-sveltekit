@@ -41,40 +41,29 @@
 
     let commandBuffer = '';
 
-    // Handle input from the terminal
-  //   term.onData((data) => {
-  //   if (data === '\r') {
-  //     console.log('Sending command:', commandBuffer);
-  //     socket.sendEvent('repl', { command: commandBuffer }); // Send as JSON object      commandBuffer = '';
-  //     term.write('\r\n>>> ');
-  //   } else {
-  //     commandBuffer += data;
-  //     term.write(data);
-  //   }
-  // });
-
-  term.onData((data) => {
-  if (data === '\r') { // Enter key
-    console.log('Sending command:', JSON.stringify(commandBuffer));
-    socket.sendEvent('repl', { command: commandBuffer.trim() }); // Send JSON object
-    commandBuffer = ''; // 🔹 Clear buffer after sending
-    term.write('\r\n>>> ');
-  } else if (data === '\u007F') { // Backspace
-    if (commandBuffer.length > 0) {
-      commandBuffer = commandBuffer.slice(0, -1);
-      term.write('\b \b'); // Remove last character visually
+    term.onData((data) => {
+    if (data === '\r') { // Enter key
+      const payload = { command: commandBuffer.trim() };
+      console.log("Sending WebSocket event:", "repl", payload);
+      socket.sendEvent("repl", payload);
+      commandBuffer = ''; // 🔹 Clear buffer after sending
+      term.write('\r\n>>> ');
+    } else if (data === '\u007F') { // Backspace
+      if (commandBuffer.length > 0) {
+        commandBuffer = commandBuffer.slice(0, -1);
+        term.write('\b \b'); // Remove last character visually
+      }
+    } else {
+      commandBuffer += data;
+      term.write(data);
     }
-  } else {
-    commandBuffer += data;
-    term.write(data);
-  }
-});
+  });
 
 
-    // Listen for responses from the backend
-    socket.on('repl', (result) => {
-      term.writeln(result);  // Display the result in the terminal
-      term.write('>>> ');
+    socket.on("repl", (result) => {
+        console.log("Received WebSocket response:", result);
+        term.writeln(result.result); // Assuming 'result' is a JSON object with a 'result' key
+        term.write(">>> ");
     });
 
     // Resize the terminal when the window size changes

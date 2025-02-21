@@ -2,22 +2,31 @@
 #define BERRY_REPL_SERVICE_H
 
 #include <ESP32SvelteKit.h>
-#include <StatefulService.h>
 #include <EventEndpoint.h>
-#include <ArduinoJson.h>
-#include "berry.h"
-#include "be_vm.h"
+#include <StatefulService.h>
+#include <be_vm.h>
 
 class BerryReplService : public StatefulService<String> {
 public:
-    explicit BerryReplService(ESP32SvelteKit *sveltekit);
+    BerryReplService(ESP32SvelteKit *sveltekit);
     void begin();
-    void handleCommand(const String &command);
+
+    // Callbacks must be static to match the EventEndpoint signature.
+    static void read(String &state, JsonObject &root);
+    static StateUpdateResult update(JsonObject &root, String &state);
+
+    // Use a static pointer so that static methods can access the instance.
+    static BerryReplService* s_instance;
 
 private:
-    EventEndpoint<String> _eventEndpoint;
-    bvm *_vm;  // Berry Virtual Machine instance
+    void onReplUpdated();
     String executeCommand(const String &command);
+
+    bvm *_vm;
+    EventEndpoint<String> _eventEndpoint;
+    // Store the last valid result so that empty updates don't override it.
+    String _lastResult;
+    EventSocket* _socket; 
 };
 
-#endif // BERRY_REPL_SERVICE_H
+#endif  // BERRY_REPL_SERVICE_H
