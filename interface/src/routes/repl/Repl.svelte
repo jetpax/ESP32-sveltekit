@@ -4,6 +4,8 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
+  import { tick } from 'svelte';
+
 
   let term;
   let termContainer;
@@ -49,87 +51,92 @@
 
     let cursorPosition = 0; // Track cursor position
 
+    term.onData((data) => {
+      if (data === '\r') { 
+        // Enter key pressed
+        if (commandBuffer.trim()) {
+          history.unshift(commandBuffer);
+          commandIndex = -1;
+          term.writeln(""); // Move to a new line before execution
+          socket.sendEvent("repl", { command: commandBuffer.trim() });
+        }
+        commandBuffer = ""; // Clear input buffer
+        cursorPosition = 0; // Reset cursor position
+      } else if (data === '\u007F') { 
+        // Backspace key (delete before cursor)
+        if (cursorPosition > 0) {
+          commandBuffer = commandBuffer.slice(0, cursorPosition - 1) + commandBuffer.slice(cursorPosition);
+          cursorPosition--;
 
-term.onData((data) => {
-  if (data === '\r') { 
-    // Enter key pressed
-    if (commandBuffer.trim()) {
-      history.unshift(commandBuffer);
-      commandIndex = -1;
-      term.writeln(""); // Move to a new line before execution
-      socket.sendEvent("repl", { command: commandBuffer.trim() });
-    }
-    commandBuffer = ""; // Clear input buffer
-    cursorPosition = 0; // Reset cursor position
-  } else if (data === '\u007F') { 
-    // Backspace key (delete before cursor)
-    if (cursorPosition > 0) {
-      commandBuffer = commandBuffer.slice(0, cursorPosition - 1) + commandBuffer.slice(cursorPosition);
-      cursorPosition--;
+          // Rewrite the input line
+          term.write('\r>>> ' + commandBuffer + ' ');
+          term.write(`\r>>> ${commandBuffer.slice(0, cursorPosition)}`);
+        }
+      } else if (data === '\u001b[D') { 
+        // Left Arrow Key (Move cursor left)
+        if (cursorPosition > 0) {
+          cursorPosition--;
+          term.write('\x1b[D'); // Move cursor left
+        }
+      } else if (data === '\u001b[C') { 
+        // Right Arrow Key (Move cursor right)
+        if (cursorPosition < commandBuffer.length) {
+          cursorPosition++;
+          term.write('\x1b[C'); // Move cursor right
+        }
+      } else if (data === '\u001b[A') { 
+        // Arrow Up (Command History)
+        if (history.length > 0) {
+          commandIndex = Math.min(commandIndex + 1, history.length - 1);
+          commandBuffer = history[commandIndex];
+          cursorPosition = commandBuffer.length;
 
-      // Rewrite the input line
-      term.write('\r>>> ' + commandBuffer + ' ');
-      term.write(`\r>>> ${commandBuffer.slice(0, cursorPosition)}`);
-    }
-  } else if (data === '\u001b[D') { 
-    // Left Arrow Key (Move cursor left)
-    if (cursorPosition > 0) {
-      cursorPosition--;
-      term.write('\x1b[D'); // Move cursor left
-    }
-  } else if (data === '\u001b[C') { 
-    // Right Arrow Key (Move cursor right)
-    if (cursorPosition < commandBuffer.length) {
-      cursorPosition++;
-      term.write('\x1b[C'); // Move cursor right
-    }
-  } else if (data === '\u001b[A') { 
-    // Arrow Up (Command History)
-    if (history.length > 0) {
-      commandIndex = Math.min(commandIndex + 1, history.length - 1);
-      commandBuffer = history[commandIndex];
-      cursorPosition = commandBuffer.length;
+          // Clear and write new input
+          term.write(`\r>>> ${' '.repeat(term.cols - 4)}\r>>> ${commandBuffer}`);
+        }
+      } else if (data === '\u001b[B') { 
+        // Arrow Down (Command History)
+        if (commandIndex > 0) {
+          commandIndex--;
+          commandBuffer = history[commandIndex];
+          cursorPosition = commandBuffer.length;
+        } else {
+          commandIndex = -1;
+          commandBuffer = "";
+          cursorPosition = 0;
+        }
 
-      // Clear and write new input
-      term.write(`\r>>> ${' '.repeat(term.cols - 4)}\r>>> ${commandBuffer}`);
-    }
-  } else if (data === '\u001b[B') { 
-    // Arrow Down (Command History)
-    if (commandIndex > 0) {
-      commandIndex--;
-      commandBuffer = history[commandIndex];
-      cursorPosition = commandBuffer.length;
-    } else {
-      commandIndex = -1;
-      commandBuffer = "";
-      cursorPosition = 0;
-    }
+        // Clear and write new input
+        term.write(`\r>>> ${' '.repeat(term.cols - 4)}\r>>> ${commandBuffer}`);
+      } else { 
+        // Insert character at cursor position
+        commandBuffer = commandBuffer.slice(0, cursorPosition) + data + commandBuffer.slice(cursorPosition);
+        cursorPosition++;
 
-    // Clear and write new input
-    term.write(`\r>>> ${' '.repeat(term.cols - 4)}\r>>> ${commandBuffer}`);
-  } else { 
-    // Insert character at cursor position
-    commandBuffer = commandBuffer.slice(0, cursorPosition) + data + commandBuffer.slice(cursorPosition);
-    cursorPosition++;
+        // Rewrite input line properly
+        term.write(`\r>>> ${commandBuffer} `);
+        term.write(`\r>>> ${commandBuffer.slice(0, cursorPosition)}`);
+      }
+    });
 
-    // Rewrite input line properly
-    term.write(`\r>>> ${commandBuffer} `);
-    term.write(`\r>>> ${commandBuffer.slice(0, cursorPosition)}`);
-  }
-});
+    // Handle back end output and scrolling
+    socket.on("repl", async (result) => {
+        await tick(); // Ensure Svelte is ready before updating the terminal
 
-// Handle output and ensure scrolling
-socket.on("repl", (result) => {
-  const atBottom = term.buffer.active.baseY === term.buffer.active.viewportY;
+        if (!result || typeof result.result !== "string") {
+            console.error("Received invalid result from REPL:", result);
+            return; // Stop execution if result is missing or invalid
+        }
 
-  term.writeln("\r\n" + result.result); // Print output from server
+        const atBottom = term.buffer.active.viewportY >= term.buffer.active.baseY - 1;
 
-  if (atBottom) {
-    term.scrollToBottom(); // Ensure it scrolls when needed
-  }
+        term.write(`${result.result.trim()}\r\n>>> `);
 
-  prompt(); // Only call prompt AFTER result is printed
-});
+        if (atBottom) {
+          term.scrollToBottom();
+          autoScroll = true;
+        }
+    });
 
     term.onScroll(() => {
     // Detect if user has manually scrolled up
