@@ -10,10 +10,10 @@
 	<div class="card md:card-side bg-base-200 shadow-primary shadow-2xl">
 		<figure class="bg-base-200"><img src={logo} alt="Logo" class="h-auto w-64" /></figure>
 		<div class="card-body w-80">
-			<h2 class="card-title text-center text-2xl">Welcome to ESP32-SvelteKit</h2>
+			<h2 class="card-title text-center text-2xl">Welcome to RetroVMS Scriptomatic</h2>
 			<p class="py-6 text-center">
-				A simple, secure and extensible framework for IoT projects for ESP32 platforms with
-				responsive <a
+				A simple, secure and extensible framework for EV conversions
+				 <a
 					href="https://kit.svelte.dev/"
 					class="link"
 					target="_blank"
@@ -31,7 +31,7 @@
 			<a
 				class="btn btn-primary"
 				href="/demo"
-				on:click={() => notifications.success('You did it!', 1000)}>Start Demo</a
+				on:click={() => notifications.success('You did it!', 1000)}>Start Building!</a
 			>
 		</div>
 	</div>

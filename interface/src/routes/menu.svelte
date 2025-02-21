@@ -1,5 +1,5 @@
 <script lang="ts">
-	import logo from '$lib/assets/logo.png';
+	import logo from '$lib/assets/peace.png';
 	import Github from '~icons/tabler/brand-github';
 	import Discord from '~icons/tabler/brand-discord';
 	import Users from '~icons/tabler/users';
@@ -44,20 +44,20 @@
 
 	let menuItems = [
 		{
-			title: 'Demo App',
+			title: 'Lighting',
 			icon: Control,
 			href: '/demo',
 			feature: true,
 			
 		},
     {
-      title: 'Berry Editor',
-      icon: Settings, // Replace with a suitable icon
+      title: 'Script Editor',
+      icon: Settings, 
       href: '/file-editor',
       feature: true,
     },
     { 
-      title: "REPL", 
+      title: "Berry REPL", 
       icon: Settings, 
       href: "/repl", 
       feature: true }, 

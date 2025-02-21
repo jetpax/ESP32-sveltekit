@@ -78,35 +78,14 @@
 
 <SettingsCard collapsible={false}>
 	<Light slot="icon" class="lex-shrink-0 mr-2 h-6 w-6 self-end" />
-	<span slot="title">Light State</span>
+	<span slot="title">Ambient Lighting</span>
 	<div class="w-full">
-		<h1 class="text-xl font-semibold">REST Example</h1>
-		<div class="alert alert-info my-2 shadow-lg">
-			<Info class="h-6 w-6 flex-shrink-0 stroke-current" />
-			<span>The form below controls the LED via the RESTful service exposed by the ESP device.</span
-			>
-		</div>
-		<div class="flex flex-row flex-wrap justify-between gap-x-2">
-			<div class="form-control w-52">
-				<label class="label cursor-pointer">
-					<span class="mr-4">Light State?</span>
-					<input type="checkbox" bind:checked={lightOn} class="checkbox checkbox-primary" />
-				</label>
-			</div>
-			<div class="flex-grow" />
-			<button class="btn btn-primary inline-flex items-center" on:click={postLightstate}
-				><Save class="mr-2 h-5 w-5" /><span>Save</span></button
-			>
-			<button class="btn btn-primary inline-flex items-center" on:click={getLightstate}
-				><Reload class="mr-2 h-5 w-5" /><span>Reload</span></button
-			>
-		</div>
-		<div class="divider" />
-		<h1 class="text-xl font-semibold">Event Socket Example</h1>
+
+    <div class="divider" />
 		<div class="alert alert-info my-2 shadow-lg">
 			<Info class="h-6 w-6 flex-shrink-0 stroke-current" />
 			<span
-				>The switch below controls the LED via the event system which uses WebSocket under the hood.
+				>The switch below controls the LED via the event system over WebSockets.
 				It will automatically update whenever the LED state changes.</span
 			>
 		</div>
