@@ -6,117 +6,146 @@ extern "C" void be_error_pop_all(bvm *vm);
 
 static const char *TAG = "BerryReplService";
 
-// Initialize static instance pointer.
 BerryReplService* BerryReplService::s_instance = nullptr;
 
 BerryReplService::BerryReplService(ESP32SvelteKit *sveltekit)
     : _eventEndpoint(&BerryReplService::read, &BerryReplService::update, this, sveltekit->getSocket(), "repl"),
-    _socket(sveltekit->getSocket()) 
+      _socket(sveltekit->getSocket()) 
 {
     _vm = be_vm_new();
     s_instance = this;
-    _lastResult = ""; // initially empty
-    ESP_LOGI(TAG, "Berry VM created");
+    _lastResult = "";
+    _logBuffer = "";
+
+    ESP_LOGI(TAG, "Berry VM initialized");
 }
 
 void BerryReplService::begin() {
     _eventEndpoint.begin();
     addUpdateHandler([&](const String &originId) { onReplUpdated(); }, false);
     ESP_LOGI(TAG, "Berry REPL service started");
+
+    registerPrintFunction();
+}
+
+void BerryReplService::registerPrintFunction() {
+  be_pushntvfunction(_vm, [](bvm *vm) -> int {
+      if (be_isstring(vm, 1)) {
+          const char *output = be_tostring(vm, 1);
+          ESP_LOGI(TAG, "Berry print captured: %s", output);
+          s_instance->_logBuffer += String(output) + "\n";  // Append to log buffer
+      }
+      return 0;
+  });
+  be_setglobal(_vm, "print");
 }
 
 void BerryReplService::onReplUpdated() {
   ESP_LOGI(TAG, "onReplUpdated() called");
 
-  // Log the last known result before sending
-  ESP_LOGI(TAG, "onReplUpdated(): Last known result = %s", _lastResult.c_str());
-
-  // Construct the JSON payload
   JsonDocument doc;
   doc["result"] = _lastResult;
-  JsonObject jsonObject = doc.as<JsonObject>();
+  
+  if (!_logBuffer.isEmpty()) {
+      doc["stdout"] = _logBuffer;
+      _logBuffer.clear();  // Reset buffer after sending
+  }
 
-  // Emit event directly using _socket
   if (_socket) {
-      _socket->emitEvent("repl", jsonObject);
+      JsonObject obj = doc.as<JsonObject>();  // Create an lvalue JsonObject
+      _socket->emitEvent("repl", obj);
       ESP_LOGI(TAG, "Sent WebSocket event: repl -> %s", _lastResult.c_str());
   } else {
       ESP_LOGE(TAG, "Socket is NULL, cannot send event!");
   }
 }
 
+void BerryReplService::processCommand(const String &command) {
+    ESP_LOGI(TAG, "Processing command: %s", command.c_str());
+
+    _logBuffer = "";  // Reset logs before execution
+    _lastResult = executeCommand(command);
+
+    onReplUpdated();  // Send results & logs via WebSocket
+}
+
 String BerryReplService::executeCommand(const String &command) {
     ESP_LOGI(TAG, "Executing command: %s", command.c_str());
-  
-    int ret = be_loadstring(_vm, command.c_str());
-    if(ret != 0) {
-        ESP_LOGE(TAG, "Failed to load command");
-        be_error_pop_all(_vm);
-        return "Error: Failed to load command";
+
+    String modifiedCommand = wrapCommand(command);
+    ESP_LOGI(TAG, "Modified command: %s", modifiedCommand.c_str());
+
+    int ret = be_loadstring(_vm, modifiedCommand.c_str());
+    if (ret != 0) {
+        return handleExecutionError("Failed to load command");
     }
-  
+
     ret = be_pcall(_vm, 0);
-    if(ret != 0) {
-        ESP_LOGE(TAG, "Failed to execute command");
-        be_error_pop_all(_vm);
-        return "Error: Command execution failed";
+    if (ret != 0) {
+        return handleExecutionError("Failed to execute command");
     }
+
+    return extractExecutionResult();
+}
+
+String BerryReplService::wrapCommand(const String &command) {
+  if (command.startsWith("print(")) {
+      return command;  // Execute `print()` directly without wrapping in `return`
+  }
+
+  if (!(command.startsWith("return") || command.startsWith("def") ||
+        command.startsWith("import") || command.startsWith("for") ||
+        command.startsWith("while") || command.startsWith("if") ||
+        command.startsWith("class"))) 
+  {
+      return "return (" + command + ")";
+  }
+  return command;
+}
+
+String BerryReplService::handleExecutionError(const char* errorMessage) {
+    ESP_LOGE(TAG, "%s", errorMessage);
+    be_error_pop_all(_vm);
+    return String("Error: ") + errorMessage;
+}
+
+String BerryReplService::extractExecutionResult() {
+  if (!_logBuffer.isEmpty()) {
+      String result = _logBuffer;  // Prioritize printed output
+      _logBuffer.clear();  // Clear buffer after sending
+      ESP_LOGI(TAG, "Returning captured print output: %s", result.c_str());
+      return result;
+  }
+
+  const char* resultStr = be_tostring(_vm, -1);
+  String result = resultStr ? String(resultStr) : "nil";  // Default to "nil"
+  be_pop(_vm, 1);
   
-    // Capture the result from the top of the VM's stack.
-    const char* resultStr = be_tostring(_vm, -1);
-    String result;
-    if(resultStr) {
-        result = String(resultStr);
-    } else {
-        result = "nil";  // No result was returned
-    }
-  
-    // Clean up the result from the stack.
-    be_pop(_vm, 1);
-  
-    ESP_LOGI(TAG, "Command executed successfully, result: %s", result.c_str());
-    return result;
+  ESP_LOGI(TAG, "Execution result: %s", result.c_str());
+  return result;
 }
 
 void BerryReplService::read(String &state, JsonObject &root) {
-    ESP_LOGI(TAG, "Raw WebSocket payload received");
-
-    // If the payload is empty, preserve the last valid result.
-    if(root.isNull() || root.size() == 0) {
-        ESP_LOGD(TAG, "Empty JSON payload received, ignoring.");
-        // Set state to the last valid result.
+    if (root.isNull() || root.size() == 0) {
+        ESP_LOGD(TAG, "Empty JSON payload received, returning last result.");
         state = s_instance->_lastResult;
         return;
     }
 
-    std::string jsonString;
-    serializeJson(root, jsonString);
-    ESP_LOGI(TAG, "Parsed JSON: %s", jsonString.c_str());
-
-    if(root["command"].is<const char*>()) {
-        state = root["command"].as<const char*>();
-        ESP_LOGI(TAG, "WebSocket received command: %s", state.c_str());
-    } else {
-        ESP_LOGE(TAG, "Invalid WebSocket payload (missing or malformed 'command')");
-    }
+    ESP_LOGI(TAG, "Received JSON command: %s", root["command"].as<const char*>());
+    state = root["command"].as<const char*>();
 }
 
 StateUpdateResult BerryReplService::update(JsonObject &root, String &state) {
-    ESP_LOGI(TAG, "Processing WebSocket update...");
+  if (!root.containsKey("command")) {
+      return StateUpdateResult::UNCHANGED;
+  }
 
-    if(!root["command"].is<const char*>()) {
-        ESP_LOGD(TAG, "Empty or invalid command received via WebSocket; ignoring update.");
-        return StateUpdateResult::UNCHANGED;
-    }
+  String command = root["command"].as<String>();
 
-    String command = root["command"].as<const char*>();
-    ESP_LOGI(TAG, "Executing REPL command: %s", command.c_str());
+  if (s_instance) {  
+      s_instance->processCommand(command);  // ✅ Call via singleton instance
+  }
 
-    state = s_instance->executeCommand(command);
-    ESP_LOGI(TAG, "Command execution result: %s", state.c_str());
-
-    // Save the valid result so that if an empty payload comes in later, we don't lose it.
-    s_instance->_lastResult = state;
-
-    return StateUpdateResult::CHANGED;
+  return StateUpdateResult::CHANGED;
 }

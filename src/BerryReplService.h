@@ -11,7 +11,7 @@ public:
     BerryReplService(ESP32SvelteKit *sveltekit);
     void begin();
 
-    // Callbacks must be static to match the EventEndpoint signature.
+    // WebSocket handlers (must be static for EventEndpoint)
     static void read(String &state, JsonObject &root);
     static StateUpdateResult update(JsonObject &root, String &state);
 
@@ -21,12 +21,20 @@ public:
 private:
     void onReplUpdated();
     String executeCommand(const String &command);
+    String wrapCommand(const String &command);     // Auto-wrap single expressions
+    String extractExecutionResult();               // Handles explicit return values
+    String handleExecutionError(const char* err);  // Error handling
+
+    void processCommand(const String &command);  // <-- Add this line
+    void registerPrintFunction();  // Capture print() calls
 
     bvm *_vm;
     EventEndpoint<String> _eventEndpoint;
-    // Store the last valid result so that empty updates don't override it.
+    EventSocket* _socket;
+
+    // Store the last valid result + print output logs
     String _lastResult;
-    EventSocket* _socket; 
+    String _logBuffer;  
 };
 
 #endif  // BERRY_REPL_SERVICE_H
