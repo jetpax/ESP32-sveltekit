@@ -34,7 +34,8 @@
   onMount(() => {
     term = new Terminal({
       cursorBlink: true,
-      scrollback: 1000,
+      scrollback: 1000,      
+      convertEol: true,
       theme: {
         background: '#2e2e2e',
         foreground: '#00ff00',
@@ -119,24 +120,33 @@
       }
     });
 
-    // Handle back end output and scrolling
-    socket.on("repl", async (result) => {
-        await tick(); // Ensure Svelte is ready before updating the terminal
+    socket.on("repl", async (event) => {
+    // await tick(); // Ensure Svelte updates before processing
 
-        if (!result || typeof result.result !== "string") {
-            console.error("Received invalid result from REPL:", result);
-            return; // Stop execution if result is missing or invalid
-        }
+    if (!event) {
+        console.error("Invalid REPL response:", event);
+        return;
+    }
 
-        const atBottom = term.buffer.active.viewportY >= term.buffer.active.baseY - 1;
+    const atBottom = term.buffer.active.viewportY >= term.buffer.active.baseY - 1;
 
-        term.write(`${result.result.trim()}\r\n>>> `);
+if (event.stdout) {
+    term.write(event.stdout.trim() + "\r\n"); 
+}
 
-        if (atBottom) {
-          term.scrollToBottom();
-          autoScroll = true;
-        }
-    });
+if (event.result) {
+    term.write(event.result.trim());  
+}
+
+    prompt(); 
+
+    if (atBottom) {
+        term.scrollToBottom();
+        autoScroll = true;
+    }
+});
+
+
 
     term.onScroll(() => {
     // Detect if user has manually scrolled up

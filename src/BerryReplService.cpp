@@ -24,7 +24,6 @@ void BerryReplService::begin() {
     _eventEndpoint.begin();
     addUpdateHandler([&](const String &originId) { onReplUpdated(); }, false);
     ESP_LOGI(TAG, "Berry REPL service started");
-
     registerPrintFunction();
 }
 
@@ -41,51 +40,50 @@ void BerryReplService::registerPrintFunction() {
 }
 
 void BerryReplService::onReplUpdated() {
-  ESP_LOGI(TAG, "onReplUpdated() called");
+    ESP_LOGI(TAG, "onReplUpdated() called");
 
-  JsonDocument doc;
-  doc["result"] = _lastResult;
-  
-  if (!_logBuffer.isEmpty()) {
-      doc["stdout"] = _logBuffer;
-      _logBuffer.clear();  // Reset buffer after sending
-  }
+    JsonDocument doc;
+    
+    if (!_logBuffer.isEmpty()) {
+        doc["stdout"] = _logBuffer;  // ✅ Separate print() logs
+        _logBuffer.clear();
+    }
 
-  if (_socket) {
-      JsonObject obj = doc.as<JsonObject>();  // Create an lvalue JsonObject
-      _socket->emitEvent("repl", obj);
-      ESP_LOGI(TAG, "Sent WebSocket event: repl -> %s", _lastResult.c_str());
-  } else {
-      ESP_LOGE(TAG, "Socket is NULL, cannot send event!");
-  }
+    if (!_lastResult.isEmpty() && _lastResult != "nil") {
+        doc["result"] = _lastResult;  // ✅ Only send meaningful results
+    }
+
+    if (_socket) {
+        JsonObject obj = doc.as<JsonObject>();
+        _socket->emitEvent("repl", obj);
+        ESP_LOGI(TAG, "Sent WebSocket event: repl -> %s", _lastResult.c_str());
+    } else {
+        ESP_LOGE(TAG, "Socket is NULL, cannot send event!");
+    }
 }
 
 void BerryReplService::processCommand(const String &command) {
-    ESP_LOGI(TAG, "Processing command: %s", command.c_str());
-
-    _logBuffer = "";  // Reset logs before execution
-    _lastResult = executeCommand(command);
-
-    onReplUpdated();  // Send results & logs via WebSocket
+  _logBuffer.clear();  // ✅ Reset logs before execution
+  _lastResult.clear(); // ✅ Reset last result before execution
+  _lastResult = executeCommand(command);
 }
 
 String BerryReplService::executeCommand(const String &command) {
-    ESP_LOGI(TAG, "Executing command: %s", command.c_str());
+  ESP_LOGI(TAG, "Executing command: %s", command.c_str());
 
-    String modifiedCommand = wrapCommand(command);
-    ESP_LOGI(TAG, "Modified command: %s", modifiedCommand.c_str());
+  String modifiedCommand = wrapCommand(command);
 
-    int ret = be_loadstring(_vm, modifiedCommand.c_str());
-    if (ret != 0) {
-        return handleExecutionError("Failed to load command");
-    }
+  int ret = be_loadstring(_vm, modifiedCommand.c_str());
+  if (ret != 0) {
+      return handleExecutionError("Failed to load command");
+  }
 
-    ret = be_pcall(_vm, 0);
-    if (ret != 0) {
-        return handleExecutionError("Failed to execute command");
-    }
+  ret = be_pcall(_vm, 0);
+  if (ret != 0) {
+      return handleExecutionError("Failed to execute command");
+  }
 
-    return extractExecutionResult();
+  return extractExecutionResult();
 }
 
 String BerryReplService::wrapCommand(const String &command) {
@@ -109,18 +107,19 @@ String BerryReplService::handleExecutionError(const char* errorMessage) {
     return String("Error: ") + errorMessage;
 }
 
+
 String BerryReplService::extractExecutionResult() {
   if (!_logBuffer.isEmpty()) {
-      String result = _logBuffer;  // Prioritize printed output
-      _logBuffer.clear();  // Clear buffer after sending
-      ESP_LOGI(TAG, "Returning captured print output: %s", result.c_str());
+      _logBuffer.trim();  
+      String result = _logBuffer; 
+      _logBuffer.clear();  // Clear _logBuffer immediately to prevent duplicate sends
       return result;
   }
 
   const char* resultStr = be_tostring(_vm, -1);
-  String result = resultStr ? String(resultStr) : "nil";  // Default to "nil"
+  String result = resultStr ? String(resultStr) : "nil";
   be_pop(_vm, 1);
-  
+
   ESP_LOGI(TAG, "Execution result: %s", result.c_str());
   return result;
 }
