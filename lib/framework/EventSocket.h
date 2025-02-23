@@ -21,6 +21,8 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <Ticker.h>
+
 
 #define EVENT_SERVICE_PATH "/ws/events"
 
@@ -51,11 +53,13 @@ private:
   PsychicWebSocketHandler _socket;
   SecurityManager *_securityManager;
   AuthenticationPredicate _authenticationPredicate;
+  Ticker _keepAliveTicker;
 
   std::vector<String> events;
   std::map<String, std::list<int>> client_subscriptions;
   std::map<String, std::list<EventCallback>> event_callbacks;
   std::map<String, std::list<SubscribeCallback>> subscribe_callbacks;
+
   void handleEventCallbacks(String event, JsonObject &jsonObject, int originId);
   void handleSubscribeCallbacks(String event, const String &originId);
 
@@ -64,6 +68,7 @@ private:
   void onWSOpen(PsychicWebSocketClient *client);
   void onWSClose(PsychicWebSocketClient *client);
   esp_err_t onFrame(PsychicWebSocketRequest *request, httpd_ws_frame *frame);
+  void sendKeepAlive();
 };
 
 #endif

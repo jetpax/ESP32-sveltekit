@@ -17,6 +17,7 @@ void EventSocket::begin()
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));
     _server->on(EVENT_SERVICE_PATH, &_socket);
+    _keepAliveTicker.attach_ms(1000, std::bind(&EventSocket::sendKeepAlive, this));
 
     ESP_LOGV("EventSocket", "Registered event socket endpoint: %s", EVENT_SERVICE_PATH);
 }
@@ -59,7 +60,7 @@ esp_err_t EventSocket::onFrame(PsychicWebSocketRequest *request, httpd_ws_frame 
 #if FT_ENABLED(EVENT_USE_JSON)
     if (frame->type == HTTPD_WS_TYPE_TEXT)
     {
-        ESP_LOGV("EventSocket", "ws[%s][%u] request: %s", request->client()->remoteIP().toString().c_str(),
+        ESP_LOGI("EventSocket", "ws[%s][%u] request: %s", request->client()->remoteIP().toString().c_str(),
                  request->client()->socket(), (char *)frame->payload);
 
         DeserializationError error = deserializeJson(doc, (char *)frame->payload, frame->len);
@@ -228,4 +229,15 @@ bool EventSocket::isEventValid(String event)
 unsigned int EventSocket::getConnectedClients()
 {
     return (unsigned int)_socket.getClientList().size();
+}
+
+void EventSocket::sendKeepAlive() {
+  for (auto *client : _socket.getClientList()) {
+      PsychicWebSocketClient *wsClient = static_cast<PsychicWebSocketClient *>(client);
+      if (wsClient && wsClient->socket() != -1) {
+        const char *keepaliveMsg = "{\"event\":\"keepalive\"}";
+        ESP_LOGI("WebSocket", "Sending %s to client %d", keepaliveMsg, wsClient->socket());
+        wsClient->sendMessage(HTTPD_WS_TYPE_TEXT, (const void *)keepaliveMsg, strlen(keepaliveMsg));
+      }
+  }
 }

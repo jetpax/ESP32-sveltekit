@@ -24,7 +24,7 @@ function createWebSocket() {
 		clearTimeout(unresponsiveTimeoutId);
 		clearTimeout(reconnectTimeoutId);
 		listeners.get(reason)?.forEach((listener) => listener(event));
-		reconnectTimeoutId = setTimeout(connect, 1000);
+		reconnectTimeoutId = setTimeout(connect, 5000);
 	}
 
 	function connect() {
@@ -42,7 +42,6 @@ function createWebSocket() {
 		ws.onmessage = (message) => {
 			resetUnresponsiveCheck();
 			let payload = message.data;
-
 			const binary = payload instanceof ArrayBuffer;
 			listeners.get(binary ? 'binary' : 'message')?.forEach((listener) => listener(payload));
 			try {
@@ -51,12 +50,21 @@ function createWebSocket() {
 				listeners.get('error')?.forEach((listener) => listener(error));
 				return;
 			}
+
+      if (payload.event === "keepalive") {
+        console.log("Received keepalive from Server");
+        return; // No further action needed
+      }
+
 			listeners.get('json')?.forEach((listener) => listener(payload));
 			const { event, data } = payload;
 			if (event) listeners.get(event)?.forEach((listener) => listener(data));
 		};
 		ws.onerror = (ev) => disconnect('error', ev);
-		ws.onclose = (ev) => disconnect('close', ev);
+		ws.onclose = (ev) => {
+        disconnect('close', ev);
+        console.log('Connection closed. Code:', ev.code, 'Reason:', ev.reason, 'Clean:', ev.wasClean);
+      };
 	}
 
 	function unsubscribe(event: string, listener?: (data: any) => void) {
@@ -75,7 +83,7 @@ function createWebSocket() {
 
 	function resetUnresponsiveCheck() {
 		clearTimeout(unresponsiveTimeoutId);
-		unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), 2000);
+		unresponsiveTimeoutId = setTimeout(() => disconnect('unresponsive'), 5000);
 	}
 
 	function send(msg: unknown) {
