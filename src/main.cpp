@@ -107,7 +107,7 @@ void setup()
 
     berryReplService.begin();
 
-    writeFile(ESPFS, "/test.be", "print('Hello, World!')\r\na=20\r\nprint(a) \r\n");
+    writeFile(ESPFS, "/test.be", "print('Hello!')\r\na=20\r\nprint(a) \r\n");
 }
 
 void loop()
@@ -124,7 +124,15 @@ void loop()
     // Set the GC threshold to 3584 bytes to avoid the first useless GC
     vm->gc.threshold = 3584;
 
-    ret_code1 = be_loadstring(vm, "print('Hello, Berry!')\r\na=20\r\nprint(a)\r\n");
+    ret_code1 = be_loadstring(vm, 
+        "print('Hello, Berry!')\r\n"
+        "a=20\r\n"
+        "print(a)\r\n"
+        "def hi(name)\r\n"
+        "    print('Hello, ' + name + '!')\r\n"
+        "end\r\n"
+        "hi('World')\r\n"
+    );
     if (ret_code1 != 0)
     {
         be_error_pop_all(vm); // clear Berry stack
