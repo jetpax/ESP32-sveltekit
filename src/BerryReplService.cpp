@@ -70,17 +70,45 @@ void BerryReplService::processCommand(const String &command) {
   _lastResult = executeCommand(command);
 }
 
+
+String BerryReplService::wrapCommand(const String &command) {
+  // First attempt to wrap in `return (...)`
+  String wrappedCmd = "return (" + command + ")";
+  
+  // Try to execute it
+  int ret_code = be_loadstring(_vm, wrappedCmd.c_str());
+  if (be_getexcept(_vm, ret_code) == BE_SYNTAX_ERROR) {
+      be_pop(_vm, 2); // Remove error from stack
+      return command; // Fallback to executing as-is
+  }
+  
+  return wrappedCmd;
+}
+
+
 String BerryReplService::executeCommand(const String &command) {
   ESP_LOGI(TAG, "Executing command: %s", command.c_str());
 
   String modifiedCommand = wrapCommand(command);
 
-  int ret = be_loadstring(_vm, modifiedCommand.c_str());
-  if (ret != 0) {
-      return handleExecutionError("Failed to load command");
-  }
+  int ret;
+  do {
+      // First try wrapping in `return (...)`
+      ret = be_loadbuffer(_vm, "input", modifiedCommand.c_str(), modifiedCommand.length());
+      if (be_getexcept(_vm, ret) == BE_SYNTAX_ERROR) {
+          be_pop(_vm, 2);  // Remove syntax error
+          // Retry without wrapping
+          ret = be_loadbuffer(_vm, "input", command.c_str(), command.length());
+      }
+      if (ret != 0) break;
 
-  ret = be_pcall(_vm, 0);
+      ESP_LOGI(TAG, "Berry script loaded successfully");
+
+      // BrTimeoutStart();
+      ret = be_pcall(_vm, 0);  // Execute the command
+      // BrTimeoutReset();
+  } while (0);
+
   if (ret != 0) {
       return handleExecutionError("Failed to execute command");
   }
@@ -88,20 +116,6 @@ String BerryReplService::executeCommand(const String &command) {
   return extractExecutionResult();
 }
 
-String BerryReplService::wrapCommand(const String &command) {
-  if (command.startsWith("print(")) {
-      return command;  // Execute `print()` directly without wrapping in `return`
-  }
-
-  if (!(command.startsWith("return") || command.startsWith("def") ||
-        command.startsWith("import") || command.startsWith("for") ||
-        command.startsWith("while") || command.startsWith("if") ||
-        command.startsWith("class"))) 
-  {
-      return "return (" + command + ")";
-  }
-  return command;
-}
 
 String BerryReplService::handleExecutionError(const char* errorMessage) {
     ESP_LOGE(TAG, "%s", errorMessage);
@@ -138,14 +152,14 @@ void BerryReplService::read(String &state, JsonObject &root) {
 }
 
 StateUpdateResult BerryReplService::update(JsonObject &root, String &state) {
-  if (!root.containsKey("command")) {
-      return StateUpdateResult::UNCHANGED;
+  if (!root["command"].is<const char*>()) {
+    return StateUpdateResult::UNCHANGED;
   }
 
   String command = root["command"].as<String>();
 
   if (s_instance) {  
-      s_instance->processCommand(command);  // ✅ Call via singleton instance
+      s_instance->processCommand(command); 
   }
 
   return StateUpdateResult::CHANGED;
