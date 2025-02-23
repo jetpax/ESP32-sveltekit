@@ -45,12 +45,14 @@ void BerryReplService::onReplUpdated() {
     JsonDocument doc;
     
     if (!_logBuffer.isEmpty()) {
-        doc["stdout"] = _logBuffer;  // ✅ Separate print() logs
+        doc["stdout"] = _logBuffer;  // Separate print() logs
         _logBuffer.clear();
     }
 
-    if (!_lastResult.isEmpty() && _lastResult != "nil") {
-        doc["result"] = _lastResult;  // ✅ Only send meaningful results
+    if (_lastResult.isEmpty()) {  // Ensure at least an empty string result
+        doc["result"] = "";
+    } else {
+        doc["result"] = _lastResult;
     }
 
     if (_socket) {
@@ -63,8 +65,8 @@ void BerryReplService::onReplUpdated() {
 }
 
 void BerryReplService::processCommand(const String &command) {
-  _logBuffer.clear();  // ✅ Reset logs before execution
-  _lastResult.clear(); // ✅ Reset last result before execution
+  _logBuffer.clear();  // Reset logs before execution
+  _lastResult.clear(); // Reset last result before execution
   _lastResult = executeCommand(command);
 }
 

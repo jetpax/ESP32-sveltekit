@@ -134,8 +134,8 @@ if (event.stdout) {
     term.write(event.stdout.trim() + "\r\n"); 
 }
 
-if (event.result) {
-    term.write(event.result.trim());  
+if (event.result && event.result !== "nil") {
+    term.write(event.result.trim());
 }
 
     prompt(); 
